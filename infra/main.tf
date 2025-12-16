@@ -1,22 +1,25 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    archive = {
-      source = "hashicorp/archive"
-    }
+# API Gateway HTTP Protocol
+resource "aws_apigatewayv2_api" "main" {
+  name          = "go-events"
+  protocol_type = "HTTP"
+  description   = "Serverless API Gateway for GO Events API"
+}
+
+# Create the cloudwatch log group
+resource "aws_cloudwatch_log_group" "api_gw" {
+  name              = "/aws/api-gateway/go-events"
+  retention_in_days = 1
+}
+
+# Deployment Stage
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.main.id
+  name        = "$default"
+  auto_deploy = true
+
+  #Enable logging
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api_gw.arn
+    format          = "$context.requestId $context.identity.sourceIp $context.requestTime $context.httpMethod $context.routeKey $context.status $context.protocol $context.responseLength $context.integrationErrorMessage"
   }
-}
-
-provider "aws" {
-  region = "us-east-1" # Altere para sua região
-}
-
-# Zipar o binário Go antes de subir
-data "archive_file" "ingest_zip" {
-  type        = "zip"
-  source_file = "../bin/bootstrap" # A AWS Amazon Linux 2023 exige que o binário chame 'bootstrap'
-  output_path = "../bin/ingest.zip"
 }
